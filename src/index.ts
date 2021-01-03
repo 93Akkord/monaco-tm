@@ -1,5 +1,5 @@
-import {rehydrateRegexps} from './configuration';
-import {SimpleLanguageInfoProvider} from './providers';
-import {registerLanguages} from './register';
+import { rehydrateRegexps } from './configuration';
+import { SimpleLanguageInfoProvider } from './providers';
+import { registerLanguages } from './register';
 
-export {SimpleLanguageInfoProvider, registerLanguages, rehydrateRegexps};
+export { SimpleLanguageInfoProvider, registerLanguages, rehydrateRegexps };
