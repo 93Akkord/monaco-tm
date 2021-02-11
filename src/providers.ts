@@ -1,20 +1,22 @@
+// + Cleaned
+
+// #region Imports
+
 import type * as monaco from 'monaco-editor';
-type Monaco = typeof monaco;
 import type { IGrammar, IRawGrammar, IRawTheme, IOnigLib, StackElement } from 'vscode-textmate';
 import type { LanguageId, LanguageInfo } from './register';
-
-import { INITIAL, Registry, parseRawGrammar } from 'vscode-textmate';
-// @ts-ignore
+import { INITIAL, Registry, RegistryOptions, parseRawGrammar } from 'vscode-textmate';
 import { generateTokensCSSForColorMap } from 'monaco-editor/esm/vs/editor/common/modes/supports/tokenization.js';
-// @ts-ignore
 import { TokenizationRegistry } from 'monaco-editor/esm/vs/editor/common/modes.js';
-// @ts-ignore
 import { Color } from 'monaco-editor/esm/vs/base/common/color.js';
 // import pythonGrammar from '../grammars/MagicPython.tmLanguage.json';
-// @ts-ignore
 import pythonGrammar from '!!raw-loader!../grammars/MagicPython.tmLanguage.json';
 
-console.debug('pythonGrammar:', pythonGrammar);
+// #endregion Imports
+
+// #region Type Definitions
+
+type Monaco = typeof monaco;
 
 /** String identifier for a "scope name" such as 'source.cpp' or 'source.java'. */
 export type ScopeName = string;
@@ -40,6 +42,7 @@ export type SimpleLanguageInfoProviderConfig = {
     theme: IRawTheme;
 
     onigLib: Promise<IOnigLib>;
+
     monaco: Monaco;
 };
 
@@ -58,6 +61,8 @@ export interface ScopeNameInfo {
     injections?: ScopeName[];
 }
 
+// #endregion Type Definitions
+
 /**
  * Basic provider to implement the fetchLanguageInfo() function needed to
  * power registerLanguages(). It is designed to fetch all resources
@@ -70,23 +75,25 @@ export class SimpleLanguageInfoProvider {
 
     constructor(private config: SimpleLanguageInfoProviderConfig) {
         const { grammars, fetchGrammar, theme, onigLib, monaco } = config;
-        this.monaco = monaco;
 
-        this.registry = new Registry({
+        this.monaco = monaco;
+        
+        let options: RegistryOptions = {
             onigLib,
 
             async loadGrammar(scopeName: ScopeName): Promise<IRawGrammar | null> {
                 const scopeNameInfo = grammars[scopeName];
+
                 if (scopeNameInfo == null) {
                     return null;
                 }
 
                 const { type, grammar } = await fetchGrammar(scopeName);
+
                 // If this is a JSON grammar, filePath must be specified with a `.json`
                 // file extension or else parseRawGrammar() will assume it is a PLIST
                 // grammar.
                 // return parseRawGrammar(grammar, `example.${type}`);
-                
                 return parseRawGrammar(pythonGrammar, `example.${type}`);
             },
 
@@ -103,12 +110,15 @@ export class SimpleLanguageInfoProvider {
              */
             getInjections(scopeName: ScopeName): string[] | undefined {
                 const grammar = grammars[scopeName];
+
                 return grammar ? grammar.injections : undefined;
             },
 
             // Note that nothing will display without the theme!
             theme,
-        });
+        };
+
+        this.registry = new Registry(options);
 
         this.tokensProviderCache = new TokensProviderCache(this.registry);
     }
@@ -120,10 +130,13 @@ export class SimpleLanguageInfoProvider {
     injectCSS() {
         const cssColors = this.registry.getColorMap();
         const colorMap = cssColors.map(Color.Format.CSS.parseHex);
+
         // This is needed to ensure the minimap gets the right colors.
         TokenizationRegistry.setColorMap(colorMap);
+
         const css = generateTokensCSSForColorMap(colorMap);
         const style = createStyleElementForColorsCSS();
+
         style.innerHTML = css;
     }
 
@@ -132,6 +145,7 @@ export class SimpleLanguageInfoProvider {
             this.getTokensProviderForLanguage(language),
             this.config.fetchConfiguration(language),
         ]);
+
         return { tokensProvider, configuration };
     }
 
@@ -143,6 +157,7 @@ export class SimpleLanguageInfoProvider {
         }
 
         const encodedLanguageId = this.monaco.languages.getEncodedLanguageId(language);
+
         // Ensure the result of createEncodedTokensProvider() is resolved before
         // setting the language configuration.
         return this.tokensProviderCache.createEncodedTokensProvider(scopeName, encodedLanguageId);
@@ -154,7 +169,7 @@ export class SimpleLanguageInfoProvider {
                 return scopeName;
             }
         }
-        
+
         return null;
     }
 }
@@ -164,10 +179,7 @@ class TokensProviderCache {
 
     constructor(private registry: Registry) { }
 
-    async createEncodedTokensProvider(
-        scopeName: string,
-        encodedLanguageId: number,
-    ): Promise<monaco.languages.EncodedTokensProvider> {
+    async createEncodedTokensProvider(scopeName: string, encodedLanguageId: number): Promise<monaco.languages.EncodedTokensProvider> {
         const grammar = await this.getGrammar(scopeName, encodedLanguageId);
 
         return {
@@ -175,12 +187,10 @@ class TokensProviderCache {
                 return INITIAL;
             },
 
-            tokenizeEncoded(
-                line: string,
-                state: monaco.languages.IState,
-            ): monaco.languages.IEncodedLineTokens {
+            tokenizeEncoded(line: string, state: monaco.languages.IState): monaco.languages.IEncodedLineTokens {
                 const tokenizeLineResult2 = grammar.tokenizeLine2(line, state as StackElement);
                 const { tokens, ruleStack: endState } = tokenizeLineResult2;
+
                 return { tokens, endState };
             },
         };
@@ -188,6 +198,7 @@ class TokensProviderCache {
 
     getGrammar(scopeName: string, encodedLanguageId: number): Promise<IGrammar> {
         const grammar = this.scopeNameToGrammar.get(scopeName);
+
         if (grammar != null) {
             return grammar;
         }
@@ -196,6 +207,7 @@ class TokensProviderCache {
         // and tokenTypes fields that might be useful/necessary to take advantage of
         // at some point.
         const grammarConfiguration = {};
+
         // We use loadGrammarWithConfiguration() rather than loadGrammar() because
         // we discovered that if the numeric LanguageId is not specified, then it
         // does not get encoded in the TokenMetadata.
@@ -212,7 +224,9 @@ class TokensProviderCache {
                     throw Error(`failed to load grammar for ${scopeName}`);
                 }
             });
+
         this.scopeNameToGrammar.set(scopeName, promise);
+
         return promise;
     }
 }
@@ -226,15 +240,19 @@ function createStyleElementForColorsCSS(): HTMLStyleElement {
     // name 'monaco-colors' based on:
     // https://github.com/microsoft/vscode/blob/f78d84606cd16d75549c82c68888de91d8bdec9f/src/vs/editor/standalone/browser/standaloneThemeServiceImpl.ts#L206-L214
     const monacoColors = document.getElementsByClassName('monaco-colors')[0];
+
     if (monacoColors) {
         monacoColors.parentElement?.insertBefore(style, monacoColors.nextSibling);
     } else {
         // Though if we cannot find it, just append to <head>.
         let { head } = document;
+
         if (head == null) {
             head = document.getElementsByTagName('head')[0];
         }
+
         head?.appendChild(style);
     }
+
     return style;
 }

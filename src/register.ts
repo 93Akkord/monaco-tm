@@ -1,4 +1,9 @@
+// + Cleaned
+
 import type * as monaco from 'monaco-editor';
+
+// #region Type Definitions
+
 type Monaco = typeof monaco;
 
 /** String identifier like 'cpp' or 'java'. */
@@ -8,6 +13,8 @@ export type LanguageInfo = {
     tokensProvider: monaco.languages.EncodedTokensProvider | null;
     configuration: monaco.languages.LanguageConfiguration | null;
 };
+
+// #endregion Type Definitions
 
 /**
  * This function needs to be called before monaco.editor.create().
@@ -22,6 +29,7 @@ export function registerLanguages(languages: monaco.languages.ILanguageExtension
     for (const extensionPoint of languages) {
         // Recall that the id is a short name like 'cpp' or 'java'.
         const { id: languageId } = extensionPoint;
+
         monaco.languages.register(extensionPoint);
 
         // Lazy-load the tokens provider and configuration data.

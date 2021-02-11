@@ -1,16 +1,6 @@
 import type { LanguageId } from './register';
 import type { ScopeName, TextMateGrammar, ScopeNameInfo } from './providers';
-
-// Recall we are using MonacoWebpackPlugin. According to the
-// monaco-editor-webpack-plugin docs, we must use:
-//
-// import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
-//
-// instead of
-//
-// import * as monaco from 'monaco-editor';
-//
-// because we are shipping only a subset of the languages.
+import { defaultOptions } from './monaco/options';
 import * as monaco from 'monaco-editor/esm/vs/editor/editor.api';
 import { createOnigScanner, createOnigString, loadWASM } from 'vscode-oniguruma';
 // import { loadWASM/* , OnigRegExp, OnigScanner, IOnigSearchResult, IOnigMatch, OnigString */ } from 'onigasm';
@@ -19,6 +9,7 @@ import { SimpleLanguageInfoProvider } from './providers';
 import { registerLanguages } from './register';
 import { rehydrateRegexps } from './configuration';
 import VsCodeDarkTheme from './vs-dark-plus-theme';
+import pythonSample01 from '!!raw-loader!../sample-files/python_sample_01.py';
 
 interface DemoScopeNameInfo extends ScopeNameInfo {
     path: string;
@@ -45,23 +36,7 @@ async function main(language: LanguageId) {
     const languages: monaco.languages.ILanguageExtensionPoint[] = [
         {
             id: 'python',
-            extensions: [
-                '.py',
-                '.rpy',
-                '.pyw',
-                '.cpy',
-                '.gyp',
-                '.gypi',
-                '.pyi',
-                '.ipy',
-                '.bzl',
-                '.cconf',
-                '.cinc',
-                '.mcconf',
-                '.sky',
-                '.td',
-                '.tw',
-            ],
+            extensions: ['.py', '.rpy', '.pyw', '.cpy', '.gyp', '.gypi', '.pyi', '.ipy', '.bzl', '.cconf', '.cinc', '.mcconf', '.sky', '.td', '.tw'],
             aliases: ['Python', 'py'],
             filenames: ['Snakefile', 'BUILD', 'BUCK', 'TARGETS'],
             firstLine: '^#!\\s*/?.*\\bpython[0-9.-]*\\b',
@@ -112,13 +87,18 @@ async function main(language: LanguageId) {
         monaco,
     });
 
-    registerLanguages(
-        languages,
-        (language: LanguageId) => provider.fetchLanguageInfo(language),
-        monaco,
-    );
+    registerLanguages(languages, (language: LanguageId) => provider.fetchLanguageInfo(language), monaco);
 
     const value = getSampleCodeForLanguage(language);
+
+    let editor = createEditor({ options: { language, value } });
+
+    provider.injectCSS();
+}
+
+function createEditor({ options = {} }: { options: monaco.editor.IEditorOptions | monaco.editor.IDiffEditorOptions | monaco.editor.IStandaloneEditorConstructionOptions }): monaco.editor.IStandaloneCodeEditor {
+    options = Object.assign(defaultOptions(), options);
+
     const id = 'container';
     const element = document.getElementById(id);
 
@@ -126,44 +106,14 @@ async function main(language: LanguageId) {
         throw Error(`could not find element #${id}`);
     }
 
-    monaco.editor.create(element, {
-        value,
-        language,
-        theme: 'vs-dark',
-        minimap: {
-            enabled: true,
-        },
-    });
+    let editor = monaco.editor.create(element, options);
 
-    provider.injectCSS();
+    return editor;
 }
-
-// // Taken from https://github.com/microsoft/vscode/blob/829230a5a83768a3494ebbc61144e7cde9105c73/src/vs/workbench/services/textMate/browser/textMateService.ts#L33-L40
-// async function loadVSCodeOnigurumWASM(): Promise<Response | ArrayBuffer> {
-//     // const response = await fetch('/node_modules/vscode-oniguruma/release/onig.wasm');
-//     const response = await fetch('/node_modules/onigasm/lib/onigasm.wasm');
-//     const contentType = response.headers.get('content-type');
-
-//     // if (contentType === 'application/wasm') {
-//     //     return response;
-//     // }
-
-//     // Using the response directly only works if the server sets the MIME type 'application/wasm'.
-//     // Otherwise, a TypeError is thrown when using the streaming compiler.
-//     // We therefore use the non-streaming compiler :(.
-//     return await response.arrayBuffer();
-// }
 
 function getSampleCodeForLanguage(language: LanguageId): string {
     if (language === 'python') {
-        return `\
-import foo
-
-async def bar(): string:
-  f = await foo()
-  f_string = f"Hooray {f}! format strings are not supported in current Monarch grammar"
-  return foo_string
-`;
+        return pythonSample01
     }
 
     throw Error(`unsupported language: ${language}`);

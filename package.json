@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "monaco-editor": "0.21.2",
+    "monaco-textmate": "^3.0.1",
+    "onigasm": "^2.2.5",
     "vscode-oniguruma": "^1.4.0",
     "vscode-textmate": "5.1.1"
   },

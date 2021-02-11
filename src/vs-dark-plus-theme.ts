@@ -1,3 +1,5 @@
+// + Cleaned
+
 // Theme data derived from:
 // https://github.com/microsoft/vscode/raw/a716714a88891cad69c0753fb95923870df295f5/extensions/theme-defaults/themes/dark_plus.json
 
